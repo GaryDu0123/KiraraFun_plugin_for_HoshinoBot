@@ -15,7 +15,7 @@ except Exception:
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 from .gacha import Gacha
 from ..kirara import sv
-from .chara_data_updater import request_chara_data_from_server
+from .chara_data_updater import update_gacha_pool
 
 file_full_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -61,7 +61,12 @@ gacha = Gacha()
 @sv.on_fullmatch(('kirara十连', 'kirara 十连'), only_to_me=True)
 async def kirara_gacha_ten(bot, ev):
     buf = BytesIO()
-    (await draw_gacha_result(gacha.gacha_ten())).save(buf, format='PNG')
+    try:
+        gacha_result = gacha.gacha_ten()
+    except Exception as e:
+        await bot.send(ev, f'抽卡出错~wwwww')
+        return
+    (await draw_gacha_result(gacha_result)).save(buf, format='PNG')
     base64_str = f'base64://{base64.b64encode(buf.getvalue()).decode()}'
     await bot.send(ev, f'''[CQ:image,file={base64_str}]''')
 
@@ -69,7 +74,11 @@ async def kirara_gacha_ten(bot, ev):
 @sv.on_fullmatch(('kirara单抽', 'kirara 单抽'), only_to_me=True)
 async def kirara_gacha_one(bot, ev):
     buf = BytesIO()
-    gacha_result = gacha.gacha_one(gacha.up_prob, gacha.s5_prob, gacha.s4_prob)
+    try:
+        gacha_result = gacha.gacha_one(gacha.up_prob, gacha.s5_prob, gacha.s4_prob)
+    except Exception as e:
+        await bot.send(ev, f'抽卡出错~wwwww')
+        return
     (await draw_gacha_result([[gacha_result[0]], 1 if gacha_result[1] == 5 else 0])).save(buf, format='PNG')
     base64_str = f'base64://{base64.b64encode(buf.getvalue()).decode()}'
     await bot.send(ev, f'''[CQ:image,file={base64_str}]''')
@@ -77,8 +86,9 @@ async def kirara_gacha_one(bot, ev):
 
 @sv.on_rex(r'kirara *更新(卡池|角色)数据', only_to_me=True)
 async def update_gacha_data(bot, ev):
+    await bot.send(ev, '更新中...')
     try:
-        await request_chara_data_from_server()
+        await update_gacha_pool()
         await bot.send(ev, '角色数据已更新')
     except Exception:
         await bot.send(ev, '角色数据更新失败')
